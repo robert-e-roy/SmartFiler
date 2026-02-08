@@ -129,6 +129,10 @@ def generate_config(source_dir, output_file=None):
         config_dir = Path.home() / '.config' / 'file-organizer'
         config_dir.mkdir(parents=True, exist_ok=True)
         output_file = config_dir / 'config.json'
+    else:
+        output_file = Path(output_file)
+        if output_file.suffix.lower() != '.json':
+            output_file = output_file.with_suffix('.json')
     
     with open(output_file, 'w') as f:
         json.dump(config, f, indent=2)

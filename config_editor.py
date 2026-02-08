@@ -387,12 +387,15 @@ class ConfigEditor(App):
         """Test a filename against current category rules."""
         from textual.screen import ModalScreen
         from textual.widgets import Static
+        from textual.work import work
         
         class TestDialog(ModalScreen):
             def compose(self) -> ComposeResult:
                 with Vertical():
                     yield Label("Test Filename")
-                    yield Input(placeholder="Enter filename to test", id="test-input")
+                    with Horizontal():
+                        yield Input(placeholder="Enter filename or path", id="test-input")
+                        yield Button("Browse", id="btn-browse", variant="default")
                     yield Button("Test", id="btn-test-now", variant="primary")
                     yield Static("", id="test-result")
                     yield Button("Close", id="btn-close")
@@ -404,6 +407,14 @@ class ConfigEditor(App):
                     self.query_one("#test-result", Static).update(result)
                 elif event.button.id == "btn-close":
                     self.app.pop_screen()
+                elif event.button.id == "btn-browse":
+                    self.browse_file()
+            
+            @work(exclusive=True)
+            async def browse_file(self):
+                from textual_fspicker import FileOpen
+                if path := await self.push_screen_wait(FileOpen()):
+                    self.query_one("#test-input", Input).value = str(path)
         
         self.push_screen(TestDialog())
     
