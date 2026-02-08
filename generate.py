@@ -80,6 +80,7 @@ def generate_config(source_dir, output_file=None):
     if not folder_data:
         return None
     
+    source_path = Path(source_dir).resolve()
     # Build config structure
     config = {
         "categories": {},
@@ -87,7 +88,8 @@ def generate_config(source_dir, output_file=None):
             "ignore_hidden": True,
             "ignore_system": True,
             "create_subdirs_by_date": False,
-            "dry_run": False
+            "dry_run": False,
+            "target_directory": str(source_path)
         }
     }
     

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 from textual.app import App, ComposeResult
-from textual.containers import Container, Horizontal, Vertical
+from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.widgets import Header, Footer, Button, Input, TextArea, Label, ListView, ListItem, Select
 from textual.binding import Binding
 import json
@@ -22,16 +22,31 @@ class ConfigEditor(App):
     }
     
     #category-list {
-        width: 30;
+        width: 38;
         height: 100%;
         border: solid $primary;
         padding: 1;
+    }
+    
+    #category-list .reorder-row {
+        height: 1fr;
+    }
+    
+    #category-list ListView {
+        width: 1fr;
+        height: 100%;
     }
     
     #details-panel {
         width: 1fr;
         height: 100%;
         padding: 1;
+    }
+    
+    #details-scroll {
+        overflow-y: auto;
+        scrollbar-size: 1 1;
+        height: 1fr;
     }
     
     .input-group {
@@ -41,7 +56,7 @@ class ConfigEditor(App):
     
     .button-row {
         height: auto;
-        margin-top: 1;
+        margin-bottom: 1;
     }
     
     Button {
@@ -49,10 +64,30 @@ class ConfigEditor(App):
     }
     
     TextArea {
-        height: 6;
+        height: auto;
+        min-height: 2;
     }
     
     Select {
+        margin-bottom: 1;
+    }
+    
+    .reorder-row {
+        width: 100%;
+    }
+    
+    .reorder-row TextArea {
+        width: 1fr;
+    }
+    
+    .reorder-buttons {
+        width: auto;
+        margin-left: 1;
+    }
+    
+    .reorder-buttons Button {
+        min-width: 3;
+        padding: 0 1;
         margin-bottom: 1;
     }
     """
@@ -86,39 +121,14 @@ class ConfigEditor(App):
         with Container(id="main-container"):
             with Vertical(id="category-list"):
                 yield Label("Categories", classes="section-title")
-                yield ListView(id="categories")
+                with Horizontal(classes="reorder-row"):
+                    yield ListView(id="categories")
+                    with Vertical(classes="reorder-buttons"):
+                        yield Button("↑", id="btn-cat-up")
+                        yield Button("↓", id="btn-cat-down")
             
             with Vertical(id="details-panel"):
                 yield Label("Category Details", classes="section-title")
-                
-                with Vertical(classes="input-group"):
-                    yield Label("Category Name:")
-                    yield Input(placeholder="e.g., screenshots", id="category-name")
-                
-                with Vertical(classes="input-group"):
-                    yield Label("Extensions (one per line):")
-                    yield TextArea(id="extensions", classes="text-area")
-                
-                with Vertical(classes="input-group"):
-                    yield Label("Filename Patterns (one per line, * for wildcard):")
-                    yield TextArea(id="patterns", classes="text-area")
-                
-                with Vertical(classes="input-group"):
-                    yield Label("Match Mode:")
-                    yield Select(
-                        [
-                            ("Extension AND Pattern (both must match)", "both"),
-                            ("Extension OR Pattern (either can match)", "either"),
-                            ("Extension Only", "extension"),
-                            ("Pattern Only", "pattern"),
-                        ],
-                        id="match-mode",
-                        value="either"
-                    )
-                
-                with Vertical(classes="input-group"):
-                    yield Label("Destination Folder:")
-                    yield Input(placeholder="e.g., Screenshots", id="destination")
                 
                 with Horizontal(classes="button-row"):
                     yield Button("Add New", id="btn-add", variant="success")
@@ -127,6 +137,48 @@ class ConfigEditor(App):
                     yield Button("Save Config", id="btn-save", variant="success")
                     yield Button("Test File", id="btn-test", variant="default")
                     yield Button("Quit", id="btn-quit", variant="error")
+                
+                with Vertical(classes="input-group"):
+                    yield Label("Target Directory (optional, base path for organized files):")
+                    yield Input(placeholder="e.g. /Users/me/Downloads or leave empty", id="target-directory")
+                
+                with VerticalScroll(id="details-scroll"):
+                    with Vertical(classes="input-group"):
+                        yield Label("Category Name:")
+                        yield Input(placeholder="e.g., screenshots", id="category-name")
+                
+                    with Vertical(classes="input-group"):
+                        yield Label("Extensions (one per line, dot optional e.g. png or .png):")
+                        with Horizontal(classes="reorder-row"):
+                            yield TextArea(id="extensions", classes="text-area")
+                            with Vertical(classes="reorder-buttons"):
+                                yield Button("↑", id="btn-ext-up")
+                                yield Button("↓", id="btn-ext-down")
+                    
+                    with Vertical(classes="input-group"):
+                        yield Label("Filename Patterns (one per line, * for wildcard):")
+                        with Horizontal(classes="reorder-row"):
+                            yield TextArea(id="patterns", classes="text-area")
+                            with Vertical(classes="reorder-buttons"):
+                                yield Button("↑", id="btn-pat-up")
+                                yield Button("↓", id="btn-pat-down")
+                    
+                    with Vertical(classes="input-group"):
+                        yield Label("Match Mode:")
+                        yield Select(
+                            [
+                                ("Extension AND Pattern (both must match)", "both"),
+                                ("Extension OR Pattern (either can match)", "either"),
+                                ("Extension Only", "extension"),
+                                ("Pattern Only", "pattern"),
+                            ],
+                            id="match-mode",
+                            value="either"
+                        )
+                    
+                    with Vertical(classes="input-group"):
+                        yield Label("Destination Folder:")
+                        yield Input(placeholder="e.g., Screenshots", id="destination")
 
         
         yield Footer()
@@ -143,7 +195,8 @@ class ConfigEditor(App):
                     "ignore_hidden": True,
                     "ignore_system": True,
                     "create_subdirs_by_date": False,
-                    "dry_run": False
+                    "dry_run": False,
+                    "target_directory": ""
                 }
             }
     
@@ -155,10 +208,12 @@ class ConfigEditor(App):
     def on_mount(self) -> None:
         """Populate category list on startup."""
         self.refresh_category_list()
-        
+        # Load global target directory
+        target = self.config.get('rules', {}).get('target_directory', '')
+        self.query_one("#target-directory", Input).value = target or ''
         # Auto-select first category if any exist
         if len(self.config['categories']) > 0:
-            first_category = sorted(self.config['categories'].keys())[0]
+            first_category = list(self.config['categories'].keys())[0]
             self.load_category_details(first_category)
     
     def load_category_details(self, category_name):
@@ -215,14 +270,21 @@ class ConfigEditor(App):
             self.test_filename()
         elif button_id == "btn-quit":
             self.action_quit()
+        elif button_id in ("btn-ext-up", "btn-ext-down", "btn-pat-up", "btn-pat-down"):
+            text_area_id = "extensions" if "ext" in button_id else "patterns"
+            direction = "up" if "up" in button_id else "down"
+            self.move_line_in_text_area(text_area_id, direction)
+        elif button_id in ("btn-cat-up", "btn-cat-down"):
+            direction = "up" if "up" in button_id else "down"
+            self.move_category(direction)
 
     def refresh_category_list(self):
-        """Refresh the category list view."""
+        """Refresh the category list view (preserves config order)."""
         list_view = self.query_one("#categories", ListView)
         list_view.clear()
         
-        sorted_categories = sorted(self.config['categories'].keys())
-        for category in sorted_categories:
+        category_order = list(self.config['categories'].keys())
+        for category in category_order:
             item = ListItem(Label(category))
             item.category_name = category
             list_view.append(item)
@@ -231,7 +293,7 @@ class ConfigEditor(App):
         
         if self.current_category and self.current_category in self.config['categories']:
             try:
-                index = sorted_categories.index(self.current_category)
+                index = category_order.index(self.current_category)
                 list_view.index = index
             except (ValueError, IndexError):
                 pass
@@ -378,6 +440,47 @@ class ConfigEditor(App):
         else:
             return "No matches found"
     
+    def move_category(self, direction: str) -> None:
+        """Move the selected category up or down in the list."""
+        if not self.current_category or self.current_category not in self.config['categories']:
+            self.notify("Select a category first", severity="warning")
+            return
+        keys = list(self.config['categories'].keys())
+        idx = keys.index(self.current_category)
+        if direction == "up" and idx > 0:
+            keys[idx], keys[idx - 1] = keys[idx - 1], keys[idx]
+        elif direction == "down" and idx < len(keys) - 1:
+            keys[idx], keys[idx + 1] = keys[idx + 1], keys[idx]
+        else:
+            return
+        # Rebuild categories dict in new order
+        ordered = {k: self.config['categories'][k] for k in keys}
+        self.config['categories'] = ordered
+        self.has_unsaved_changes = True
+        self.refresh_category_list()
+
+    def move_line_in_text_area(self, text_area_id: str, direction: str) -> None:
+        """Move the line containing the cursor up or down in the given TextArea."""
+        text_area = self.query_one(f"#{text_area_id}", TextArea)
+        lines = text_area.text.split('\n')
+        if not lines:
+            return
+        row, _ = text_area.cursor_location
+        row = min(row, len(lines) - 1)
+        if direction == "up" and row > 0:
+            lines[row], lines[row - 1] = lines[row - 1], lines[row]
+            new_row = row - 1
+        elif direction == "down" and row < len(lines) - 1:
+            lines[row], lines[row + 1] = lines[row + 1], lines[row]
+            new_row = row + 1
+        else:
+            return
+        self.loading_category = True
+        text_area.text = '\n'.join(lines)
+        text_area.cursor_location = (new_row, min(text_area.cursor_location[1], len(lines[new_row])))
+        self.loading_category = False
+        self.has_unsaved_changes = True
+
     def clear_fields(self):
         """Clear input fields."""
         self.query_one("#category-name", Input).value = ""
@@ -392,6 +495,10 @@ class ConfigEditor(App):
     
     def action_save(self):
         """Save config file."""
+        target = self.query_one("#target-directory", Input).value.strip()
+        if 'rules' not in self.config:
+            self.config['rules'] = {}
+        self.config['rules']['target_directory'] = target
         self.save_config()
         self.notify(f"Config saved to {self.config_file}", severity="information")
     

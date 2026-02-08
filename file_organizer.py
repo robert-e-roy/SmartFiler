@@ -174,7 +174,9 @@ def main():
     )
     parser.add_argument(
         'directory',
-        help='Directory to organize'
+        nargs='?',
+        default=None,
+        help='Directory to organize (default: target_directory from config)'
     )
     parser.add_argument(
         '-r', '--recursive',
@@ -194,8 +196,17 @@ def main():
     args = parser.parse_args()
     
     organizer = FileOrganizer(config_path=args.config)
+    directory = args.directory
+    if directory is None:
+        directory = organizer.config.get('rules', {}).get('target_directory', '')
+        if not directory:
+            print("Error: No directory specified and no target_directory in config.")
+            print("Run: file_organizer.py <directory>")
+            print("Or set target_directory in config_editor.py or via generate.py")
+            exit(1)
+    
     organizer.organize_directory(
-        args.directory,
+        directory,
         recursive=args.recursive,
         dry_run=args.dry_run
     )
