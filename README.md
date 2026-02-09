@@ -31,6 +31,10 @@ python generate.py /path/to/your/organized/folder
 
 ```bash
 python config_editor.py
+# Use specific config
+python config_editor.py -c /path/to/my-config.json
+
+# Or use 'o' key or button to browse for config files
 ```
 
 ### 3. Organize files
