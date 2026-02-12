@@ -1,0 +1,75 @@
+{
+  "categories": {
+    "pdf": {
+      "extensions": [
+        ".pdf"
+      ],
+      "patterns": [],
+      "match_mode": "extension",
+      "destination": "Pdf"
+    },
+    "acf-to-rest-api-master": {
+      "extensions": [
+        ".json",
+        ".md",
+        ".php",
+        ".txt"
+      ],
+      "patterns": [],
+      "match_mode": "extension",
+      "destination": "acf-to-rest-api-master"
+    },
+    "blink": {
+      "extensions": [
+        ".md"
+      ],
+      "patterns": [],
+      "match_mode": "extension",
+      "destination": "blink"
+    },
+    "blink_market": {
+      "extensions": [
+        ".html",
+        ".md"
+      ],
+      "patterns": [],
+      "match_mode": "extension",
+      "destination": "blink_market"
+    },
+    "e": {
+      "extensions": [
+        ".plist",
+        ".swift"
+      ],
+      "patterns": [],
+      "match_mode": "extension",
+      "destination": "e"
+    },
+    "files5": {
+      "extensions": [
+        ".md",
+        ".php",
+        ".sql"
+      ],
+      "patterns": [],
+      "match_mode": "extension",
+      "destination": "files5"
+    },
+    "files_api": {
+      "extensions": [
+        ".php",
+        ".sql"
+      ],
+      "patterns": [],
+      "match_mode": "extension",
+      "destination": "files_api"
+    }
+  },
+  "rules": {
+    "ignore_hidden": true,
+    "ignore_system": true,
+    "create_subdirs_by_date": false,
+    "dry_run": false,
+    "target_directory": "/Users/robroy/Downloads"
+  }
+}
